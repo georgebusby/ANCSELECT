@@ -1,0 +1,9 @@
+AncestryRegion Colour
+Western_Africa_Niger-Congo #0000CD
+Central_West_Africa_Niger-Congo #03B4CC
+East_Africa_Niger-Congo #FF7F00
+East_Africa_Nilo-Saharan #984EA3
+East_Africa_Afroasiatic #FF69B4
+South_Africa_Niger-Congo #A65628
+South_Africa_KhoeSan #4DAF4A
+Eurasia #CCCC00
