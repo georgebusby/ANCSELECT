@@ -7,14 +7,14 @@
 ###################################################################
 ###################################################################
 
-temp <- c("",
-        "FULAI",
-        22,
-        "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/outputcopyprobs/FULAInolocalAllChromsPP.samples.out.gz",
-        "/mnt/kwiat/well/human/george/chromopainter2/analysislists/FULAInolocal.idfile.txt",
-        "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/ancestry_selection/FULAInolocalChrom22.ancestryselection.gz")
+# temp <- c("",
+#         "FULAI",
+#         22,
+#         "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/outputcopyprobs/FULAInolocalAllChromsPP.samples.out.gz",
+#         "/mnt/kwiat/well/human/george/chromopainter2/analysislists/FULAInolocal.idfile.txt",
+#         "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/ancestry_selection/FULAInolocalChrom22.ancestryselection.gz")
 
-# temp <- commandArgs()
+temp <- commandArgs()
   
 pop <- temp[2]
 mainchrom <- temp[3]
@@ -24,14 +24,19 @@ out_file<- temp[6]
 
 library("bigmemory")
 
+
+#snp_dir <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/"
+snp_dir <- "/kwiat/2/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/"
+#pop_file <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/analysislists/populationOverviewCopyProbs.txt"
+pop_file <- "/kwiat/2/bayes/users/george/popgen/analysis3/chromopainter/analysislists/populationOverviewCopyProbs.txt"
+
+
 ###################################################################
 ###################################################################
 ## SOME IMPORTANT VARIABLES
 options(scipen=999,digits=20)
 ## INFORMATION ON SNPS - CHROMOSOME,POSITION,ALLELES ETC
 ## DIRECTORY WITH FILE WITH SNP INFO IN THEM
-snp_dir <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/"
-#snp_dir <- "/data/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/"
 snp_file_pre <- "AllPops330KChrom"
 snp_file_pos <- "phased.legend.gz"
 ## NUMBER OF SAMPLES TO USE TO GENERATE LIKELIHOODS
@@ -44,8 +49,6 @@ samp2use <- 1 ## IF useallsamps == FALSE, THEN USE THIS SAMPLE
 ## INFORMATION ON THE SAMPLES
 ## POPFILE MUST HAVE TWO COLUMNS: "Ethnic_Group" AND "Region"
 ## THIS FILE WILL BE READ TO GROUP POPULATIONS INTO REGIONS
-pop_file <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/analysislists/populationOverviewCopyProbs.txt"
-#pop_file <- "/data/bayes/users/george/popgen/analysis3/chromopainter/analysislists/populationOverviewCopyProbs.txt"
 popkey <- read.table(pop_file,header=T)
 ###################################################################
 ###################################################################
@@ -177,7 +180,7 @@ colnames(ind_copy_probs) <- 1:n_regs
 ind_vec <- seq(1,ncol(lines3),n_samps)
 for(i in 1:n_haps)
 {
-    print(paste("esimating probs for hap:", i))
+    print(paste("estimating probs for hap:", i))
     cp <- matrix(0,nrow=n_samps,ncol=n_regs)
     colnames(cp) <- 1:n_regs
     for(j in 1:n_samps)
@@ -323,29 +326,38 @@ mle_out <- cbind(mle,out_mat[,6:ncol(out_mat)])
 ## 06 CHRIS'S MVN METHOD
 #Set things up
 n_ind <- n_haps / n_samps;
-haps <- matrix(donor_hap_vec[lines4[1:nrow(lines4),]],byrow = F,nr=n_snps)
+
+#haps <- matrix(donor_hap_vec[lines4[1:nrow(lines4),]],byrow = F,nr=n_snps)
 #Get individuals averages
 
 ## AVERAGE ACROSS THE 10 SAMPLES?
-avg <- array(NA, c(n_haps,length(region_ids)));
+avg <- matrix(0,nrow=n_haps*n_samps,ncol=n_regs)
+colnames(avg) <- 1:n_regs
+ind_vec <- seq(1,ncol(lines4),n_samps)
 for(i in 1:n_haps)
 {
-  k <- 1+((i-1)*10)
-  index <- k:(k+9)
-  for(j in 1:length(region_ids)) avg[i,j] <- sum(haps[,index] == j)/n_samps;  
+  print(paste("estimating genome-wide avg for hap:", i))
+  cp <- matrix(0,nrow=n_samps,ncol=n_regs)
+  colnames(cp) <- 1:n_regs
+  for(j in 1:n_samps)
+  {
+    tmp_cp <- table(donor_hap_vec[lines3[rows,(ind_vec[i]:(ind_vec[i]+9))[j]]])
+    tmp_cp <- tmp_cp/sum(tmp_cp)
+    cp[j,names(tmp_cp)] <- tmp_cp
+  }
+  avg[((i-1)*10+1):((i-1)*10+10),] <- cp
 }
 
-avg <-  avg / n_snps;
+avg <- avg/rowSums(avg)
+
 
 #Residual
-res <- haps;
-for(i in 1:n_haps)
+res <- lines3[!rows,];
+for(i in 1:ncol(res))
 {
-  k <- 1+((i-1)*10)
-  index <- k:(k+9)
   for(j in 1:length(region_ids))
   {
-    res[res[,index] == j] <- (1 - avg[i,j])
+    res[donor_hap_vec[res[,i]] == j,i] <- (1 - avg[i,j])
   }
   print(i);
 }
@@ -355,11 +367,11 @@ first <- seq(1,n_haps*10,by=n_samps);
 deviant <- array(0,c(n_samps,n_snps,length(region_ids)));
 for(j in 1:n_samps)
 {
-  index = first + (j-1);
+  index <- first + (j-1);
   for(i in 1:length(region_ids))
   {
     tmp <- res[,index];
-    tmp[haps[index,] != i] = 0;
+    tmp[donor_hap_vec[res[,index]] != i] = 0;
     deviant[j,,i] = rowSums(tmp);
   }
   print(j);
@@ -397,7 +409,7 @@ all_out <- cbind(mle_out,res[,6:ncol(res)])
 options(digits = 5);
 
 
-write.csv(all_out,out_file);
+write.csv(all_out,out_file)
 
 
 
