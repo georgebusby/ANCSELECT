@@ -7,12 +7,12 @@
 ###################################################################
 ###################################################################
 
-# temp <- c("",
-#         "FULAI",
-#         22,
-#         "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/outputcopyprobs/FULAInolocalAllChromsPP.samples.out.gz",
-#         "/mnt/kwiat/well/human/george/chromopainter2/analysislists/FULAInolocal.idfile.txt",
-#         "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/ancestry_selection/FULAInolocalChrom22.ancestryselection.gz")
+temp <- c("",
+        "FULAI",
+        22,
+        "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/outputcopyprobs/FULAInolocalAllChromsPP.samples.out.gz",
+        "/mnt/kwiat/well/human/george/chromopainter2/analysislists/FULAInolocal.idfile.txt",
+        "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/ancestry_selection/FULAInolocalChrom22.ancestryselection.gz")
 
 temp <- commandArgs()
   
@@ -25,10 +25,10 @@ out_file<- temp[6]
 library("bigmemory")
 
 
-#snp_dir <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/"
-snp_dir <- "/kwiat/2/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/"
-#pop_file <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/analysislists/populationOverviewCopyProbs.txt"
-pop_file <- "/kwiat/2/bayes/users/george/popgen/analysis3/chromopainter/analysislists/populationOverviewCopyProbs.txt"
+snp_dir <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/"
+#snp_dir <- "/kwiat/2/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/"
+pop_file <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/analysislists/populationOverviewCopyProbs.txt"
+#pop_file <- "/kwiat/2/bayes/users/george/popgen/analysis3/chromopainter/analysislists/populationOverviewCopyProbs.txt"
 
 
 ###################################################################
@@ -199,6 +199,7 @@ ind_copy_probs <- ind_copy_probs/rowSums(ind_copy_probs)
 region_ids2 <- region_ids[colSums(ind_copy_probs)!=0]
 n_regs2 <- length(region_ids2)
 self_reg <- region_ids[!region_ids%in%region_ids2]
+self_reg2 <- as.character(popkey$Region[popkey$Ethnic_Group==pop])
 
 ###################################################################
 ## 04 GET SNPS ON CURRENT CHROMOSOME AND ESTIMATE NULL LIKELIHOODS
@@ -233,7 +234,7 @@ for(i in 1:n_snps)
   for(reg_index in 1:length(region_ids))
   {
     reg_id <- region_ids[reg_index]
-    if(reg_id != self_reg)
+    if(!reg_id %in% self_reg)
     {
       lambda <- 0
       opt1 <- optim(lambda,par.loglik,
@@ -283,7 +284,7 @@ out_mat <- snps[snps$chrom==mainchrom,]
 for(reg_index in 1:length(region_ids))
 {
   reg_id <- region_ids[reg_index]
-  if(reg_id != self_reg)
+  if(!reg_id %in% self_reg)
   {
     print(paste0("generating likelihoods for: ",reg_id))
     mu_i <- mus[,reg_index] 
@@ -401,8 +402,8 @@ for(i in 1:ncol(marg.pval))
   marg.pval[,i] = pchisq((x[,i]-mu[i])^2/diag(sigma)[i],1,lower=FALSE);
 
 colnames(output) = c("MVNchisq","MVNp");
-colnames(x) <- region_ids[region_ids!=self_reg]
-colnames(marg.pval) <- paste(region_ids[region_ids!=self_reg],".MVNp",sep="")
+colnames(x) <- region_ids[!region_ids%in%self_reg]
+colnames(marg.pval) <- paste(region_ids[!region_ids%in%self_reg],".MVNp",sep="")
 res <- data.frame(snps[1:n_snps,],output,x,marg.pval);
 
 all_out <- cbind(mle_out,res[,6:ncol(res)])

@@ -7,7 +7,7 @@ source("~/R/Copy/Rprojects/AfricaPOPGEN/functions/plottingFunctions.R")
 #source("plottingFunctions.R")
 source("/mnt/kwiat/well/human/george/copy_selection/R/hitplots.R")
 #source("hitplots.R")
-snps <- read.table("/mnt/kwiat/data/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/AllPops330Kphased.legend", header=F,as.is=T)
+snps <- read.table("/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/AllPops330Kphased.legend", header=F,as.is=T)
 colnames(snps) <- c("chrom","rsid","pos","a0","a1")
 
 info3 <- read.table("~/R/Copy/Rprojects/AfricaPOPGEN/admixture/MalariaGenAdmixturePopulationKey3.txt",header=T,comment.char="")
@@ -25,18 +25,18 @@ regions <- as.character(unique(popkey$RegionM))
 minp <- 20
 pop <- "FULAI"
 
-in_root <- "/mnt/kwiat/data/bayes/users/george/popgen/analysis3/chromopainter/outputcopyprobs/FULAInolocalChrom"
-in_suff <- "PP.likelihoods.gz"
+in_root <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/ancestry_selection/FULAInolocalChrom"
+in_suff <- "PP.ancestryselection.txt.gz"
 pl <-c()
 for(chrom in 1:22)
 {
     in_file <- paste0(in_root,chrom,in_suff)
     if(chrom == 1)
     {
-        pl <- read.table(in_file,header=T, as.is=T)
+        pl <- read.csv(in_file,header=T, as.is=T)
     } else
     {
-        pl <- rbind(pl,read.table(in_file,header=T, as.is=T))
+        pl <- rbind(pl,read.csv(in_file,header=T, as.is=T))
     }
 }
 
@@ -73,7 +73,7 @@ if(is.null(lams))
 for(i in plotregs)
 {
     ii <- paste0(i,".likelihood")
-    lrt <- (-2*(pl$null.likelihood)) + (2*(as.numeric(pl[,ii])))
+    lrt <- (-2*(pl$snp_liks)) + (2*(as.numeric(pl[,ii])))
     chi <- -log10(pchisq(q=lrt,df=1,lower.tail=F))
     i1 <- paste0(i,".lambda")
     #chi[pl[,i1]<0] <- NA
