@@ -18,11 +18,20 @@ ancreg_list <- colour_table$AncestryRegion
 pcolshex <- colour_table$Colour
 #############################################
 ## GET LRT RESULTS
-pop <- "ANUAK"
+pop <- "FULAI"
+pcolshex <- c("#0000CD","#03B4CC","#FF7F00","#984EA3","#FF69B4","#A65628","#4DAF4A","#CCCC00")
+ancreg_list <- regions <- c("Western_Africa_Niger-Congo","Central_West_Africa_Niger-Congo",
+                            "East_Africa_Niger-Congo","East_Africa_Nilo-Saharan","East_Africa_Afroasiatic",
+                            "South_Africa_Niger-Congo","South_Africa_KhoeSan","Eurasia" )
 
-#for(pop in popkey$Ethnic_Group[57:length(popkey$Ethnic_Group)])
-for(pop in c("JUHOANSI","JOLA","FULAI"))
+for(pop in c("FULAI"))
+
+for(pop in popkey$Ethnic_Group[29:48])
 {
+   
+    y_max <- 30 #round(max(fsts),2)
+    maxx <- 18
+    main.signifp <- 8
   ## MKK?? AN ALL AFOR ASIATIC/NILO SAHARANS
     print(paste("plotting",pop))
     if(pop == "SEMIBANTU") pop = "SEMI.BANTU"
@@ -30,11 +39,13 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
     if(pop == "JUHOANSI") pop = "JUHOAN"
     if(pop == "GUIGANA") pop = "GUIGHANAKGAL"
     chroms <- 1:22
-    in_root <- paste0("/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/ancestry_selection/",pop,"nolocalChrom")
-    in_suff <- "PP.ancestryselection.txt.gz"
+    # in_root <- paste0("/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/ancestry_selection/",pop,"nolocalChrom")
+    in_root <- paste0("/mnt/kwiat/well/human/george/copy_selection2/copy_selection/output/",pop,"nolocalChrom")
+    in_suff <- ".ancestryselectionIV.gz"
     pl <-c()
     for(chrom in chroms)
     {
+      if(chrom < 10) chrom <- paste0("0",chrom)
       print(chrom)
       in_file <- paste0(in_root,chrom,in_suff)
       if(chrom == 1)
@@ -48,13 +59,12 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
     if(pop == "SEMI.BANTU") pop = "SEMIBANTU"
     if(pop == "SWBANTU") pop = "HERERO"
     if(pop == "JUHOAN") pop = "JUHOANSI"
-    if(pop == "GUIGHANAKGAP") pop = "GUIGANA"
+    if(pop == "GUIGHANAKGAL") pop = "GUIGANA"
     
     ## PRELIMINARY PLOTS
-    y_max <- 20 #round(max(fsts),2)
-    signifp <- 8
+    signifp <- main.signifp
     
-    self_reg <- popkey$AncestryRegion[popkey$Ethnic_Group==pop]
+    self_reg <- gsub("\\-","\\.",popkey$AncestryRegion[popkey$Ethnic_Group==pop])
     pos2 <- rep(NA,nrow(snps))
     labs <- unique(snps$chrom)
     nchr <- length(chroms)
@@ -86,8 +96,8 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
     ################################
     ## LET'S PLOT ALL ANCESTRIES ON THE SAME PLOT
     ## PLOT EVERTHING FIRST AND THEN ADD HITS
-  #  png(paste0("figures/",pop,"LRTmanhattan.png"),height = 2000, width = 2200,res = 300,pointsize = 10)
-    pdf(paste0("figures/",pop,"LRTmanhattan.pdf"), height = 10, width = 7)
+    png(paste0("figures/",pop,"LRTmanhattanIV.png"),height = 2000, width = 2200,res = 300,pointsize = 10)
+    # pdf(paste0("figures/",pop,"LRTmanhattanIV.pdf"), height = 10, width = 7)
     
     layout(matrix(c(1,3,2),1,3),widths =c(3,1.5,7.5))
     
@@ -100,29 +110,30 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
          xlim=c(0,y_max+2),ylim=c(xmin,xmax), axes = F)
     mtext(1,text=expression(-log10(P)), las = 1, line= 2.5, cex = 0.75)
     #mtext(2,las=0,text=pop,line=-2, col = "black")
-    #for(i in unique(labs)) abline(h=tail(pos2[snps$chrom<=i],1),lty=2, xpd = F)
+    for(i in unique(labs)) abline(h=tail(pos2[snps$chrom<=i],1),lty=2, xpd = F, col = "grey")
     axis(1,las=1)
     mtext(2,text=chroms,at=ticks,  line = 1, col = "black", las = 2, cex = 0.75)
     axis(2,at = ticks, labels = NA)
     abline(v= 0, xpd = F, lwd = 2)
     
     ## ADD GENOME-WIDE SIGNIFICANCE
-    signifp <- 8
+    signifp <- main.signifp
     abline(v= signifp, col = "red", lty = 3, xpd = F)
     hits <- c()
     plot_allpnts <- F
     while(is.null(hits))
     {
-      if(self_reg %in% c("East_Africa_Nilo-Saharan","East_Africa_Afroasiatic"))
+      self_reg2 <- self_reg
+      if(self_reg %in% c("East_Africa_Nilo.Saharan","East_Africa_Afroasiatic"))
       {
-        self_reg2 <- c("East_Africa_Nilo-Saharan","East_Africa_Afroasiatic") 
+        self_reg2 <- c("East_Africa_Nilo.Saharan","East_Africa_Afroasiatic") 
       }
-      for(reg in ancreg_list[!ancreg_list%in%self_reg2])
+      for(reg in ancreg_list[!ancreg_list%in%gsub("\\.","-",self_reg2)])
       {
-        regc <- gsub("\\-","\\.",paste0(reg,".P"))
-        regb <- gsub("\\-","\\.",paste0(reg,".lambda"))
+        regc <- gsub("\\-","\\.",paste0(reg,".GB.P"))
+        regb <- gsub("\\-","\\.",paste0(reg,".GB.beta"))
         ps <- pl[,regc]
-        tmp <- pl[ps>signifp,c(colnames(pl)[1:6],regc)]
+        tmp <- pl[ps>signifp,c(colnames(pl)[1:6],regb,regc)]
         pntcex <- rep(0.5,length(ps))
         pntcex[ps>=signifp] <- 0
         if(plot_allpnts) points(ps,pos2, cex = pntcex, col = col, pch = 19)  
@@ -134,10 +145,10 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
           for(j in 1:nrow(hitpostab))
           {
             tmp2 <- tmp[tmp$chrom==hitpostab$chrom[j]&tmp$pos2==hitpostab$pos2[j],]
-            tophit <- tmp2[which.max(tmp2[,regc]),1]
-            tmpout <- unlist(c(pl[tophit,c("chrom","rsid","pos",regc,regb)],reg))
+            tophit <- tmp2[which.max(tmp2[,regc]),]
+            tmpout <- unlist(c(tophit[,c(1:3,7,8)],reg))
             hits <- rbind(hits,tmpout)
-            colnames(hits)[4:6] <- c("P","beta","region")
+            colnames(hits)[4:6] <- c("beta","P","region")
           }
         }
       }
@@ -158,21 +169,31 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
     {
      ## FIND SNPS AROUND HIT WHERE PVALUE IS >=2
       topp <- which(pl$rsid==hits$rsid[j])
-      minp <- 0
-      regc <- gsub("\\-","\\.",paste0(hits$region[j],".P"))
+      minp <- 1
+      regc <- gsub("\\-","\\.",paste0(hits$region[j],".GB.P"))
       i <- pl[topp,regc]
       posl <- topp
-      while(i > minp)
+      tchrom <- pl$chrom[posl]
+      ichrom <- pl$chrom[posu-1]
+      if(length(ichrom) == 0 || is.na(ichrom)) ichrom <- 0
+      while(i > minp & tchrom == ichrom)
       {
         posl <- posl - 1
         i <- pl[posl,regc]
+        ichrom <- pl$chrom[posl-2]
+        if(length(ichrom) == 0 || is.na(ichrom)) ichrom <- 0
       }
       i <- pl[topp,regc]
       posu <- topp
-      while(i > minp)
+      tchrom <- pl$chrom[posu]
+      ichrom <- pl$chrom[posu+1]
+      if(length(ichrom) == 0 || is.na(ichrom)) ichrom <- 23
+      while(i > minp & tchrom == ichrom)
       {
         posu <- posu + 1
         i <- pl[posu,regc]
+        ichrom <- pl$chrom[posu+1]
+        if(length(ichrom) == 0 || is.na(ichrom)) ichrom <- 23
       }
       hits$lowerpos[j] <- pl$pos[posl]
       hits$upperpos[j] <- pl$pos[posu]
@@ -193,9 +214,18 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
     }
     
     ###########################################################################
+    ## LIMIT TO TOP 30 HITS MAX
+    if(nrow(hits) > 30 )
+    {
+      hits <- hits[order(hits$P, decreasing = T)[1:30],]
+      hits <- hits[order(hits$chrom,hits$pos),]
+    }
+    
+    ###########################################################################
     ## NOW WE WANT TO FIND THE CLOSEST GENES
     source("~/R/Copy/Rprojects/AfricaPOPGEN/functions/hitplots.R")
     genes <- load.genes()
+    genes <- genes[genes$cdsStartStat!="unk",]
     ginfo <- matrix(0,ncol=22,nrow=0)
     colnames(ginfo) <- c(colnames(genes),"rsid","reg","P","upper","lower")
     for(i in 1:nrow(hits))
@@ -220,10 +250,10 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
     {
       #if(!is.na(ginfo$rsid))
       gene_info <- paste(ginfo[ginfo$rsid==hits$rsid[i],c("name2")],collapse = " ")
-      if(nchar(gene_info)<= 40) num_gene_rows <- c(num_gene_rows,2)
-      if(nchar(gene_info)> 40 & nchar(gene_info) <=80) num_gene_rows <- c(num_gene_rows,2)
-      if(nchar(gene_info)> 80 & nchar(gene_info) <=120) num_gene_rows <- c(num_gene_rows,3)
-      if(nchar(gene_info)> 120) num_gene_rows <- c(num_gene_rows,4)
+      if(nchar(gene_info)<= 35) num_gene_rows <- c(num_gene_rows,2)
+      if(nchar(gene_info)> 35 & nchar(gene_info) <=70) num_gene_rows <- c(num_gene_rows,2)
+      if(nchar(gene_info)> 70 & nchar(gene_info) <=105) num_gene_rows <- c(num_gene_rows,3)
+      if(nchar(gene_info)> 105) num_gene_rows <- c(num_gene_rows,4)
     }
     num_gene_rows <- c(2,num_gene_rows)
     
@@ -244,7 +274,6 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
     #for(i in midsplits) abline(h=i, xpd = F, col = "red", lty = 2)
     
     ## NOW DRAW LINES FROM THE HIT TO THE EDGE AND PLOT POINTS
-    maxx <- 18
     for(j in 1:nrow(hits))
     {
       ## DRAWLINES
@@ -261,8 +290,8 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
       posl <- hits$lowerpos[j]
       hitchrom <- hits$chrom[j]
       hits2plot <- which(pl$pos==posl&pl$chrom==hitchrom):which(pl$pos==posu&pl$chrom==hitchrom)
-      hitscol <- pcolshex[ancreg_list==hits$region[j]]
-      regc <- gsub("\\-","\\.",paste0(hits$region[j],".P"))
+      hitscol <- pcolshex[ancreg_list==gsub("\\.","\\-",hits$region[j])]
+      regc <- gsub("\\-","\\.",paste0(hits$region[j],".GB.P"))
       points(pl[hits2plot,regc],pos2[hits2plot],col = hitscol,pch = 18, cex = 1)
     }
     ###########################################################################
@@ -316,7 +345,10 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
         ngene_names <- num_gene_rows[(i+1)]
         if(ngene_names %in% c(1,2))
         {
-          newsplits <- seq(midsplits[i]-(diff(midsplits)[1]*0.25),midsplits[i]+(diff(midsplits)[1]*0.25),length=2)
+          diff_midsplits <- midsplits
+          if(length(midsplits)> 1) diff_midsplits <- diff(midsplits)
+          
+          newsplits <- seq(midsplits[i]-(diff_midsplits[1]*0.25),midsplits[i]+(diff_midsplits[1]*0.25),length=2)
           spaces <- grep(" ",strsplit(gene_names,"")[[1]])
           nearest <- spaces[which.min(abs((35)-spaces))]
           gene_names <- c(substr(gene_names,1,nearest-1),
@@ -336,7 +368,9 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
         }
         if(ngene_names == 3)
         {
-          newsplits <- seq(midsplits[i]-(diff(midsplits)[1]*0.375),midsplits[i]+(diff(midsplits)[1]*0.375),length=3)
+          diff_midsplits <- midsplits
+          if(length(midsplits)> 1) diff_midsplits <- diff(midsplits)
+          newsplits <- seq(midsplits[i]-(diff_midsplits[1]*0.375),midsplits[i]+(diff_midsplits[1]*0.375),length=3)
           spaces <- grep(" ",strsplit(gene_names,"")[[1]])
           nearest1 <- spaces[which.min(abs((35)-spaces))]
           nearest2 <- spaces[which.min(abs((70)-spaces))]
@@ -352,7 +386,9 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
         }
         if(ngene_names == 4)
         {
-          newsplits <- seq(midsplits[i]-(diff(midsplits)[1]*0.5),midsplits[i]+(diff(midsplits)[1]*0.5),length=4)
+          diff_midsplits <- midsplits
+          if(length(midsplits)> 1) diff_midsplits <- diff(midsplits)
+          newsplits <- seq(midsplits[i]-(diff_midsplits[1]*0.5),midsplits[i]+(diff_midsplits[1]*0.5),length=4)
           spaces <- grep(" ",strsplit(gene_names,"")[[1]])
           nearest1 <- spaces[which.min(abs((35)-spaces))]
           nearest2 <- spaces[which.min(abs((70)-spaces))]
@@ -400,7 +436,7 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
         middiff <- diff(midsplits)[1]
       }
       newsplits <- seq(midsplits[i]-(middiff*0.25),midsplits[i]+(middiff*0.25),length=2)
-      betacol <- pcolshex[ancreg_list==hits$region[i]]
+      betacol <- pcolshex[ancreg_list==gsub("\\.","\\-",hits$region[i])]
       abline(h=midsplits[i],lty=2, xpd = F)
       rect(0,newsplits[1],beta,newsplits[2], col = betacol, border = betacol)
     }
@@ -414,3 +450,4 @@ for(pop in c("JUHOANSI","JOLA","FULAI"))
     
     dev.off()
 }
+

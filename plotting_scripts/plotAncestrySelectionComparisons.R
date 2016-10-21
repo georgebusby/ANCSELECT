@@ -3,30 +3,37 @@
 ###############################################
 
 library(dplyr) ## for binding dataframes with difference numbers of columns; bind_rows
-popkey <- read.table("data/PopulationKey.txt",
-                     header = T, stringsAsFactors = F, as.is= T)
+popkey <- read.table("data/PopulationKey.txt",header = T, stringsAsFactors = F, as.is= T)
 popkey$Ethnic_Group <- toupper(popkey$Ethnic_Group)
-## going to work with chrom 22 from the FULAI for the time being
-indir <- "/mnt/kwiat/data/1/galton/users/george/copy_selection/output/"
+
+indir <- "/mnt/kwiat/well/human/george/copy_selection2/copy_selection/output/"
+datafile <- h5file("/mnt/kwiat/well/human/george/copy_selection2/copy_selection/hdf5files/MalariaGenSelectionPaintings.hdf5")
 pop <- "FULAI"
-chrom <- 10
-in_file <- paste0(indir,pop,"nolocalChrom",chrom,".ancestryselectionIII.gz")
+for(chrom in 1:22)
+{
+  if(chrom < 10) chrom <- paste0("0", chrom)
+  print(paste0("loading chrom: ", chrom))
+  in_file <- paste0(indir,pop,"nolocalChrom",chrom,".ancestryselectionIV.gz")
+  if(chrom == "01")
+  {
+    alllrts <- read.csv(in_file, header = T)
+  } else
+  {
+    alllrts <- rbind(alllrts,read.csv(in_file, header = T))
+  }
+}
 
-lrts <- read.csv(in_file, header = T)
-
+chrom  <- 2
+if(chrom < 10) chrom  <- paste0("0",chrom)
+lrts <- alllrts[alllrts$chrom==as.numeric(chrom),]
 popstab <- read.table("data/PopulationKey.txt", header = T)
 pops <- toupper(as.character(levels(popstab$Ethnic_Group)))
 regions <- as.character(levels(popstab$AncestryRegion))
 pcols_table <- read.table("~/repos/ANCSELECT/data/RegionColours.txt",
                           comment.char = "", header = T)
-
-
-# tmp <- read.csv("/mnt/kwiat/well/human/george/copy_selection/Copy_Selection_deviant_FULAI.csv", header = T)
-# tmp <- tail(tmp,3392)
-# mvn <- -log10(tmp$pval)
 mvn <- -log10(lrts$MVNp)
 
-y_lims <- c(0,15)
+y_lims <- c(0,20)
 y_at <- pretty(y_lims)
 x_at <- pretty(lrts$pos)
 x_at[which.min(x_at)] <- min(lrts$pos)
@@ -34,13 +41,10 @@ x_at[which.max(x_at)] <- max(lrts$pos)
 x_lims <- range(x_at)
 
 
-
 #########################################################
-
-
+## PLOT COMPARISONS OF RESULTS
 n_plots <- length(regions)+2
-
-png("figures/ModelComparisonFULAIChrom22.png",
+png(paste0("figures/ModelComparison",pop,"Chrom",chrom,".png"),
     width = 2400,height = 200*(n_plots), res = 300)
 
 plot_matrix <- matrix(cbind(c(n_plots,1:(n_plots-1)),
@@ -58,9 +62,11 @@ plot(lrts$pos,plot_x,pch = 20, col = plotcol, type = "S",
 axis(2, las = 2, at = y_at, labels = y_at)
 legend("topright", bty = "n", legend = "combined MVN", text.col = plotcol)
 
+################################################
+## PLOT LRT RESULTS
 for(reg in regions)
 {
-  reg_col <- paste0(gsub("\\-","\\.",reg),".P")
+  reg_col <- paste0(gsub("\\-","\\.",reg),".GB.P")
   if(sum(colnames(lrts)==reg_col)>0)
   {
     plot_x <- lrts[,reg_col]
@@ -68,11 +74,17 @@ for(reg in regions)
     plot(lrts$pos,plot_x,pch = 20, col = plotcol, type = "S",
          ylim = y_lims, ylab = "-log10 P", xlab = "",
          axes = F, xlim = x_lims, xaxs = "i", yaxs = "i")
+    ## ADD RYAN'S RESULTS
+    reg_col <- paste0(gsub("\\-","\\.",reg),".RC.P")
+    plot_x <- lrts[,reg_col]
+    points(lrts$pos,plot_x,pch = 20, col = "grey", type = "S", lty = 2)
     axis(2, las = 2, at = y_at, labels = y_at)
     legend("topright", bty = "n", legend = gsub("\\_"," ",reg), text.col = plotcol)
   }
 }
 
+#################################################
+## PLOT AXIS
 par(mar = c(5,4,0,1))
 plot(lrts$pos,plot_x,pch = 20, col = plotcol, type = "n",
      ylim = y_lims, ylab = "", xlab = "",
@@ -81,7 +93,7 @@ axis(1, at = x_at, labels = round(x_at/1e6), xpd = T)
 mtext(1,line=2,text = paste0("position on chromosome ",chrom," (Mb)"))
 
 
-#########################################################
+##################################################
 ## 01 PLOT A PAINTED CHROMOSOME
 library("h5")
 ## FUNCTIONS
@@ -100,10 +112,6 @@ pcolshex <- c("#0000CD","#03B4CC","#FF7F00","#984EA3","#FF69B4","#A65628","#4DAF
 ancreg_list <- c("Western_Africa_Niger-Congo","Central_West_Africa_Niger-Congo",
                  "East_Africa_Niger-Congo","East_Africa_Nilo-Saharan","East_Africa_Afroasiatic",
                  "South_Africa_Niger-Congo","South_Africa_KhoeSan","Eurasia" )
-
-
-#########################################################
-## 01 PLOT A PAINTED CHROMOSOME
 plot_range <- x_lims
 ## GET MAP AND POSITION INFO
 map <- data.frame(readDataSet(datafile[paste0("/paintings/chrom",chrom,"/map")]))
@@ -139,7 +147,6 @@ for(i in 1:ncol(paintedchrom)) paintedchrompop[,i] <- happops[paintedchrom[,i]]
 paintedchromregprop <- matrix(0,nc=length(ancreg_list),nr=nrow(paintedchromreg))
 for(i in 1:nrow(paintedchromreg))
 {
-  print(i)
   tmp <- table(paintedchromreg[i,])
   paintedchromregprop[i,as.numeric(names(tmp))] <- tmp
 }
@@ -151,13 +158,6 @@ chromcolsbreaks <- sort(unique(unlist(apply(paintedchromreg,2,unique))))
 chromcols <- pcolshex[chromcolsbreaks]
 chromplot <- paintedchromreg
 
-####################################################################################
-# test_rev_region <- chrompos>=gene_region[1]&chrompos<=gene_region[2]
-# tmp <- paintedchrom[test_rev_region,]
-# 
-####################################################################################
-## SUBSAMPLE SNPS
-#snpsample <- round(seq(1,nrow(chromplot), length = 1000))
 ####################################################################################
 ## PROPORTIONS    
 chromplot <- paintedchromregprop[,8:1]
@@ -182,7 +182,7 @@ legend("top", legend=c("LRT v MVN pvalue", "LRT v marginal MVN pvalue"),
 
 for(reg in regions)
 {
-  reg_col <- paste0(gsub("\\-","\\.",reg),".P")
+  reg_col <- paste0(gsub("\\-","\\.",reg),".GB.P")
   if(sum(colnames(lrts)==reg_col)>0)
   {
     
@@ -213,6 +213,10 @@ for(reg in regions)
 
 dev.off()
 
+
+############################################
+############################################
+############################################
 png("figures/ModelComparisonFULAIChrom22RyanGeorgeLRT.png",
     width = 750, height = 1500, res = 150)
 layout(matrix(c(1:(n_plots-2)),nc = 2))

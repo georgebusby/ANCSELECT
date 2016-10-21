@@ -260,15 +260,16 @@ for(i in 1:n_snps)
   print(paste("generating likelihoods for snp:",i, "/", n_snps))
   #pcdone <- signif((i/n_snps)*100,2)
   #if(pcdone%%10 == 0) print(paste(pcdone," % through snps"))
+  data <- unlist(paintedchromreg[i])
+  ## test if local copier copies local
+  painted <- copiercopies[i=i,j=paste0("V",paintedchrom[i]), with = F]== self_reg
+  data[painted] <- NA
+  
   for(reg_index in 1:length(regions))
   {
     reg_id <- regions[reg_index]
     if(!reg_id %in% self_reg)
     {
-      data <- unlist(paintedchromreg[i])
-      ## test if local copier copies local
-      painted <- copiercopies[i=i,j=paste0("V",paintedchrom[i]), with = F]== self_reg
-      data[painted] <- NA
       ###################################################
       ## GEORGE'S HACKED LRT TEST 
       lambda <- 0
