@@ -6,18 +6,31 @@
 ## SCRIPT HELPS TO PULL OUT THE RELEVANT INFO
 
 library(h5) ## INSTALL IF NECESSARY
+
+#######################################################
 ## WE'LL WORK ON A SINGLE CHROMOSOME, COPYPROBS ARE SPLIT ACROSS
-## 22 FILES, ONE PER CHROMOSOME
-chrom <- "22"
-in_dir <- "/mnt/kwiat/well/human/george/GWAS_painting/chromopainter/hdf5/"
+## POULATIONS WITH 22 FILES, ONE PER CHROMOSOME
+## DEFINE SOME VARIABLES ##
+chrom <- "09"
+pop <- "Kenya"
+in_dir <- "/mnt/kwiat/well/human/george/GWAS_painting/"
+
+samplefile <- paste0(in_dir,"data/Superset2_GWAS-2.5M_b37.PCA.sample")
+ethnicfile <- paste0(in_dir,"data/CP1_clin_phenotypes_ALL_25JAN2016.csv")
+popsamplefile <- paste0(in_dir,"abacus/",pop,"/ALL/",pop,"GWASphasedChrom",chrom,".sample")
+
+
 ## in_dir IS THE RELEVANT DIRECTORY MOUNTED ON MY OWN COMPUTER -- THIS FULL PATH IS BELOW
 #in_dir <- "/well/malariagen/malariagen/human/george/GWAS_painting/chromopainter/hdf5/"
-hdf5file <- paste0(in_dir,"GambiaChrom",chrom,"Copyprobsperlocus.h5")
+hdf5file <- paste0(in_dir,"chromopainter/hdf5/",pop,"Chrom",chrom,"Copyprobsperlocus.h5")
+haplofile <- paste0(in_dir,"chromopainter/hdf5/",pop,"Chrom",chrom,"PhasedHaplotypes.h5")
 
-## DEFINE OUR DATASET
+#######################################################
+## DEFINE OUR DATAFILES
 datafile <- h5file(hdf5file, mode = "r")
-
-## THE BASIC LAYOUT OF THIS FILE IS:
+hapsfile <- h5file(haplofile, mode = "r")
+#######################################################
+## THE BASIC LAYOUT OF datafile IS:
 ##    /copyprobsperlocus/chrom04/
 ##    /copyprobsperlocus/chrom04/donors  = painting donors
 ##    /copyprobsperlocus/chrom04/map  = info on snps
@@ -26,9 +39,7 @@ datafile <- h5file(hdf5file, mode = "r")
 ##    /copyprobsperlocus/chrom04/haps/1-100 etc
 ## THE ACTUAL COPYING PROBS ARE HERE
 ##    /copyprobsperlocus/chrom04/probs/1-100 etc
-
-
-## LET'S TRY WITH A SINGLE CHROMOSOME: 2
+## LET'S TRY WITH A SINGLE CHROMOSOME: 22
 ## WE NEED:
 ## AVERAGE GENOME-WIDE COPYING PER HAPLOTYPE
 #######################################################
@@ -39,11 +50,9 @@ colnames(snps) <- c("rsid","recrateCP","chrom","position", "a0","a1")
 snps$position <- as.numeric(snps$position)
 ## SELF EXPLANATORY, I HOPE -- recrateCP IS THE RECOMBINATION RATE BETWEEN
 ## A SNP AND THE NEXT ONE, MEASURED IN MORGANS AND USED BY CHROMOAPAINTER
-
 #######################################################
 ## 01 LET'S WORK OUT WHICH INDS ARE IN THIS FILE
 inds_available <- list.datasets(datafile[paste0("/copyprobsperlocus/chrom",chrom,"/haps")])
-
 ## MAKE A DATAFRAME OF OUR DATASETS: THIS RELATES INDIVIDUAL IDS TO THEIR PLACE IN OUR DATASET
 haps <- c()
 for(i in inds_available)
@@ -58,17 +67,16 @@ colnames(haps) <- c("hdf5dataset","hdf5_ID", "hdf5dataset_ID","haplotypeID")
 head(haps)
 ## WHEN I RUN THIS, I GET
 # hdf5dataset hdf5_ID hdf5dataset_ID             haplotypeID
-# 1 /copyprobsperlocus/chrom04/haps/1-100       1              1 HAP 1 6006278010_R01C01
-# 2 /copyprobsperlocus/chrom04/haps/1-100       2              2 HAP 2 6006278010_R01C01
-# 3 /copyprobsperlocus/chrom04/haps/1-100       3              3 HAP 1 6006278010_R02C01
-# 4 /copyprobsperlocus/chrom04/haps/1-100       4              4 HAP 2 6006278010_R02C01
-# 5 /copyprobsperlocus/chrom04/haps/1-100       5              5 HAP 1 6006278010_R03C01
-# 6 /copyprobsperlocus/chrom04/haps/1-100       6              6 HAP 2 6006278010_R03C01
-## WHICH TELLS ME THAT HAPLOTYPE 1 IS HAP1 OF IND 6006278010_R01C01 AND IS STORED A POSITION 1 IN hdfdataset
-##                               2 IS HAP2 OF IND 6006278010_R01C01 AT POSITION 2, etc
-## LET'S GET THE CASE/CONTROL STATUS
+# 1 /copyprobsperlocus/chrom09/haps/1-100       1              1 HAP 1 5423088011_R01C01
+# 2 /copyprobsperlocus/chrom09/haps/1-100       2              2 HAP 2 5423088011_R01C01
+# 3 /copyprobsperlocus/chrom09/haps/1-100       3              3 HAP 1 5423088011_R02C01
+# 4 /copyprobsperlocus/chrom09/haps/1-100       4              4 HAP 2 5423088011_R02C01
+# 5 /copyprobsperlocus/chrom09/haps/1-100       5              5 HAP 1 5423088011_R03C01
+# 6 /copyprobsperlocus/chrom09/haps/1-100       6              6 HAP 2 5423088011_R03C01
 
-samplefile <- "/mnt/kwiat/data/1/galton/malariagen/human/Meta-analysis-2015/analysis/association-testing/MalariaGEN_1000GP_combined_reference_panel/case_control/samples/Superset2_GWAS-2.5M_b37.PCA.sample"
+## WHICH TELLS ME THAT HAPLOTYPE 1 IS HAP1 OF IND 5423088011_R01C01 AND IS STORED A POSITION 1 IN hdfdataset
+##                               2 IS HAP2 OF IND 5423088011_R01C01 AT POSITION 2, etc
+## LET'S GET THE CASE/CONTROL STATUS
 samples <- read.table(samplefile, header = T)
 samples <- samples[-1,]
 hap_casecontrol <- samples$caseorcontrol[match(sapply(as.character(haps$haplotypeID),
@@ -78,16 +86,39 @@ hap_scl <- samples$sc_sl[match(sapply(as.character(haps$haplotypeID),
                                                       function(x){strsplit(x, split=" ")[[1]][3]}),
                                                samples$gtc_id)]
 hap_scl <- as.character(hap_scl)
-
 ## LET'S GET ETHNICITY
-ethnicfile <- "/mnt/kwiat/data/1/galton/malariagen/human/data/clinical/CP1/v2.5/CP1_clin_phenotypes_ALL_25JAN2016.csv"
 ethnics <- read.csv(ethnicfile,header = T)
 hap_ethnicity <- as.character(ethnics$curated_ethnicity[match(hap_scl,ethnics$sc_sl)])
 hap_ethnicity[is.na(hap_ethnicity)] <- "OTHER"
-
 ## TO GET INDICES OF FULA, FOR EXAMPLE DO THIS:
 # ethnic <- "FULA"
 # ethnic_indices <- which(hap_ethnicity==ethnic)
+## COMBINE HAPS, CASECONTROL AND ETHNICITY INTO ONE BIG FILE
+haps <- cbind(haps,hap_casecontrol,hap_ethnicity)
+## THESE FILES CONTAIN ALL INDIVIDUALS IN THE GWAS; 
+## GAVIN GENERATED AN UNRELATED SUBSET WHICH CAN BE IDENTIFIED
+## BECAUSE THEY WEREN'T USED TO GENERATE PCs
+## WE'RE GOING TO USE THE SAMPLES THAT WE HAVE VITERBI
+## PAINTINGS FOR
+haps_keep <- read.table(popsamplefile, header = T, stringsAsFactors = F, as.is = T)
+haps_keep <- haps_keep[-1,]
+## THIS MAKES A LIST OF INDIVIDUALS WHO WE WANT TO PAINT WITH
+## ABACUS VITERBI METHOD
+haps2keep <- sapply(as.character(haps$haplotypeID),
+                    function(x){strsplit(x,split = " ")[[1]][3]})
+haps2keep <- haps2keep%in%haps_keep$ID_1
+#######################################################
+## WE WANT TO MAKE SURE THAT WE JUST USE THESE HAPLOTYPES ##
+## FOR FUTURE ANALYSIS
+
+#######################################################
+## LET'S ALSO FIND THE ORIGINAL HAPLOTYPES
+## THESE ARE STORED IN haplofile
+## EG FOR THE FIRST 100 INDS IN THE COPYPROBS FILE (200 HAPS)
+hapsdataset <- as.character(haps$hdf5dataset[1])
+hapsdataset <- gsub("copyprobsperlocus","phased",hapsdataset)  
+hapsdataset <- gsub("haps","haplotypes",hapsdataset)
+tmp_haps <- data.frame(readDataSet(hapsfile[hapsdataset]))
 
 #######################################################
 ## 01 LOOK AT SOME SNPS ACROSS CASES AND CONTROLS
@@ -108,7 +139,6 @@ regions <- sort(unique(popkey$AncestryRegion))
 #######################################################
 ## 02 SO, LET'S GET THE PROBS AT ALL SNPS FOR 
 ## ALL GAMBIAN CASES
-
 selection <- haps[hap_casecontrol=="CASE",]
 probs_haps <- matrix(0,nr=0,nc=length(donors)) ## STORE THE PROBABILITIES OT EACH HAPLOTYPE
 probs_snps <- matrix(0,nr=nrow(snps),nc=length(donors)) ## STORE THE CHROMOSOME-WIDE PROBS AT EACH SNP
