@@ -10,7 +10,7 @@ library(rhdf5)
 library(data.table)
 
 # temp <- c("",
-#         "FULAI",
+#         "AFAR",
 #         "22",
 #         "/mnt/kwiat/data/1/galton/users/george/copy_selection/hdf5files/MalariaGenSelectionPaintings.hdf5")
 
@@ -27,7 +27,9 @@ paste0 <- function(...) {
 # main_dir <- "/kwiat/1/galton/users/george/copy_selection/"
 # main_dir <- "/mnt/kwiat/data/1/galton/users/george/copy_selection/"
 main_dir <- "/well/malariagen/malariagen/human/george/copy_selection2/copy_selection/"
-outfile <- paste0(main_dir,"output/",pop,"nolocalChrom",mainchrom,".ancestryselectionIV.gz")
+# main_dir <- "/mnt/kwiat/well/human/george/copy_selection2/copy_selection/"
+
+outfile <- paste0(main_dir,"output/",pop,"nolocalChrom",mainchrom,".ancestryselectionV.gz")
 
 # popkey_file <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/ancestry_selection/MalariaGenAdmixturePopulationOverviewNSAA.txt"
 # snp_dir <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/snpfiles/"
@@ -247,16 +249,20 @@ copiercopies <- data.table(t(h5read(datafile,paste0("/lengths/chrom",mainchrom,"
 for(j in 1:ncol(copiercopies)) set(copiercopies,j=j,value=hapregs[copiercopies[[j]]])
 paintedchromreg <- data.table(paintedchromreg)
 
-
 ## SET EVERYTHING UP
-mle <- matrix(0,nrow=n_snps,ncol=6*n_regs2)
+mle <- matrix(0,nrow=n_snps,ncol=(n_regs2*7)+1)
 cnames <- c()
-for(i in region_ids2) cnames <- c(cnames,rep(i,6))
-colnames(mle) <- paste(cnames,rep(c("GB.lik","GB.beta","GB.P","RC.lik","RC.beta","RC.P"),n_regs2),sep=".")
+for(i in region_ids2) cnames <- c(cnames,rep(i,7))
+colnames(mle) <- c("pc.drop",paste(cnames,
+                                   rep(c("prop","GB.lik","GB.beta","GB.P",
+                                         "RC.lik","RC.beta","RC.P"),n_regs2),sep="."))
 
 ## LOGIT OF MUS
 mus <- ind_copy_probs
 mus <- log(mus/( 1-mus))
+
+### STORE A DATAFRAME FOR THE MVN TEST
+pchrom <- data.frame(paintedchromreg)
 
 for(i in 1:n_snps)
 {
@@ -265,10 +271,20 @@ for(i in 1:n_snps)
   #if(pcdone%%10 == 0) print(paste(pcdone," % through snps"))
   data <- unlist(paintedchromreg[i])
   ## test if local copier copies local
-  painted <- copiercopies[i=i,j=paste0("V",paintedchrom[i]), with = F]== self_reg
+  copied_haps <- paste0("V",paintedchrom[i])
+  copied_hapsreg <- as.character(hapregs[unlist(paintedchrom[i])])
+  #painted <- copiercopies[i=i,j=copied_haps, with = F] == self_reg
+  painted <- copiercopies[i=i,j=copied_haps, with = F] != copied_hapsreg
   data[painted] <- NA
+  pchrom[i,] <- data
+  perc.dropped <- sum(painted)/length(painted)
+  mle[i,1] <- perc.dropped
+  new_props <- table(data)
+  prop_cols <- paste0(ancreg_list[as.numeric(names(new_props))],".prop")
+  mle[i,prop_cols] <- table(data)
   for(reg_index in 1:length(regions))
   {
+    
     reg_id <- regions[reg_index]
     if(!reg_id %in% self_reg)
     {
@@ -283,7 +299,8 @@ for(i in 1:n_snps)
       beta <- opt2$minimum
       lrt <- (2*null_lik) - (2*test_lik)
       p <- -log10(pchisq(q=lrt,df=1,lower.tail=F))
-      mle[i,grep(reg_id,colnames(mle))[1:3]]  <- c(lrt,beta,p)
+      gb_cols <- paste0(reg_id,c(".GB.lik",".GB.beta",".GB.P"))
+      mle[i,gb_cols]  <- c(lrt,beta,p)
       ###################################################
       ## RYAN'S PRINCIPALLED VERSION
       sum_yi <- sum(data == reg_index,na.rm=T)
@@ -300,7 +317,8 @@ for(i in 1:n_snps)
       {
         BETA <- LRT <- P <- NA
       }
-      mle[i,grep(reg_id,colnames(mle))[c(4:6)]] <- c(LRT,BETA,P)
+      rc_cols <- paste0(reg_id,c(".RC.lik",".RC.beta",".RC.P"))
+      mle[i,rc_cols] <- c(LRT,BETA,P)
     }
   }
 }
@@ -317,9 +335,9 @@ all_out <- data.table(mle)
 ## Set things up
 n_ind <- n_haps / n_samps;
 avg <- ind_copy_probs
-
+res <- pchrom
 ## CALCULATE RESIDUALS
-pchrom <- res <- data.frame(paintedchromreg)
+res[is.na(res)] <- 0
 for(i in 1:ncol(res))
 {
   for(j in 1:length(regions))
@@ -359,11 +377,11 @@ sigma <- sigma + prior.sigma;
 output <- array(NA,c(n_snps,2));
 for(i in 1:n_snps)
   output[i,1] <- t(x[i,] - mu) %*% solve(sigma) %*% (x[i,] - mu);
-output[,2] <- pchisq(output[,1],ncol(sigma),lower=FALSE)
+output[,2] <- -log10(pchisq(output[,1],ncol(sigma),lower=FALSE))
 
 marg.pval = array(NA,dim(x));
 for(i in 1:ncol(marg.pval))
-  marg.pval[,i] = pchisq((x[,i]-mu[i])^2/diag(sigma)[i],1,lower=FALSE);
+  marg.pval[,i] = -log10(pchisq((x[,i]-mu[i])^2/diag(sigma)[i],1,lower=FALSE));
 
 colnames(output) <- c("MVNchisq","MVNp");
 colnames(x) <- paste(regions[!regions%in%self_reg],".MVNprops",sep = "")

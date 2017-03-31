@@ -1,7 +1,7 @@
 ###############################################
 ## CODE TO LOOK AT ANCESTRY SELECTION OUTPUT ##
 ###############################################
-
+library(h5)
 library(dplyr) ## for binding dataframes with difference numbers of columns; bind_rows
 popkey <- read.table("data/PopulationKey.txt",header = T, stringsAsFactors = F, as.is= T)
 popkey$Ethnic_Group <- toupper(popkey$Ethnic_Group)
@@ -13,7 +13,7 @@ for(chrom in 1:22)
 {
   if(chrom < 10) chrom <- paste0("0", chrom)
   print(paste0("loading chrom: ", chrom))
-  in_file <- paste0(indir,pop,"nolocalChrom",chrom,".ancestryselectionIV.gz")
+  in_file <- paste0(indir,pop,"nolocalChrom",chrom,".ancestryselectionVII.gz")
   if(chrom == "01")
   {
     alllrts <- read.csv(in_file, header = T)
@@ -31,8 +31,6 @@ pops <- toupper(as.character(levels(popstab$Ethnic_Group)))
 regions <- as.character(levels(popstab$AncestryRegion))
 pcols_table <- read.table("~/repos/ANCSELECT/data/RegionColours.txt",
                           comment.char = "", header = T)
-mvn <- -log10(lrts$MVNp)
-
 y_lims <- c(0,20)
 y_at <- pretty(y_lims)
 x_at <- pretty(lrts$pos)
@@ -44,7 +42,7 @@ x_lims <- range(x_at)
 #########################################################
 ## PLOT COMPARISONS OF RESULTS
 n_plots <- length(regions)+2
-png(paste0("figures/ModelComparison",pop,"Chrom",chrom,".png"),
+png(paste0("figures/ModelComparison",pop,"Chrom",chrom,"ancselVII.png"),
     width = 2400,height = 200*(n_plots), res = 300)
 
 plot_matrix <- matrix(cbind(c(n_plots,1:(n_plots-1)),
@@ -52,7 +50,7 @@ plot_matrix <- matrix(cbind(c(n_plots,1:(n_plots-1)),
                       nc = 2)
 layout(plot_matrix,widths = c(10,2)) 
 
-plot_x <- mvn
+plot_x <- lrts$MVNp
 plotcol <- "black"
 
 par(mar = c(1,4,0,1))
@@ -77,7 +75,7 @@ for(reg in regions)
     ## ADD RYAN'S RESULTS
     reg_col <- paste0(gsub("\\-","\\.",reg),".RC.P")
     plot_x <- lrts[,reg_col]
-    points(lrts$pos,plot_x,pch = 20, col = "grey", type = "S", lty = 2)
+#    points(lrts$pos,plot_x,pch = 20, col = "grey", type = "S", lty = 2)
     axis(2, las = 2, at = y_at, labels = y_at)
     legend("topright", bty = "n", legend = gsub("\\_"," ",reg), text.col = plotcol)
   }
@@ -161,6 +159,17 @@ chromplot <- paintedchromreg
 ####################################################################################
 ## PROPORTIONS    
 chromplot <- paintedchromregprop[,8:1]
+
+
+chromplot <- alllrts[alllrts$chrom==as.numeric(chrom),grep("\\.prop",colnames(alllrts), value = T)]
+colnames(chromplot) <- gsub("\\.prop","",colnames(chromplot))
+tmp <- matrix(0,nr=nrow(chromplot),nc = length(ancreg_list))
+tmp[,which(gsub("\\-","\\.",ancreg_list)%in%colnames(chromplot))] <- as.matrix(chromplot)
+chromplot <- tmp
+chromplot <- chromplot/rowSums(chromplot)
+chromplot <- chromplot[,8:1]
+
+
 ## ADJUST FOR RELEVANT PLOT REGION
 plot_region <- chrompos>=plot_range[1]&chrompos<=plot_range[2]
 
@@ -212,6 +221,12 @@ for(reg in regions)
 
 
 dev.off()
+
+
+####
+ps <- c(paste0(gsub("\\-","\\.",regions),".GB.P"),"MVNp")[which(c(paste0(gsub("\\-","\\.",regions),".GB.P"),"MVNp")%in%colnames(alllrts))]
+fisher <- apply(alllrts[,ps],1,function(x){pchisq( -2*sum(-x), df= 2*length(x), lower.tail=FALSE)})
+
 
 
 ############################################

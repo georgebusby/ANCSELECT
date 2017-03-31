@@ -45,19 +45,13 @@ hap2sampleindex <- function(hap,nsamps=10){
 #####
 
 
-#pdf("figures/LocalAncestryDeviationsFig2.pdf",width=10,height=10)
-pdf("figures/LocalAncestryDeviationsSuppFig.pdf",width=10,height=10)
+pdf("figures/FulaLocalAncestryDeviationsFig2malaria.pdf",width=10,height=5)
     layout(matrix(c(4,9,
                     3,8,
                     1,6,
                     2,7,
-                    5,10,
-                    14,19,
-                    13,18,
-                    11,16,
-                    12,17,
-                    15,20),10,2,byrow=T),
-           heights=rep(c(1,0.5,1,1,1.5),2),
+                    5,10),5,2,byrow=T),
+           heights=rep(c(1,0.5,1,1,1.5),1),
            widths=c(1,1))
 
     ##############################################
@@ -69,61 +63,44 @@ pdf("figures/LocalAncestryDeviationsSuppFig.pdf",width=10,height=10)
 
     analysis <- "nonlocal"
     
-    for(run in 1:4)
+    for(run in 1:2)
     {
     
       if(run == 1)
       {
-        chrom <- "01"
-        plot_range <- c(156e6,164e6)
-        #pop <- "FULAI"
-        pop <- "AMHARA"
+        chrom <- "02"
+        plot_range <- c(120e6,130e6)
+        pop <- "FULAI"
+        #pop <- "MKK"
         panel_letter <- "a"
+        gene_highlight <- c("CNTNAP5")
       }
 
       if(run == 2)
       {
-         chrom <- "02"
-         plot_range <- c(132e6,142e6)
-         #pop <- "FULAI"
-         pop <- "MKK"
-         panel_letter <- "b"
-      }
- 
-      if(run == 3)
-      {
-        chrom <- "10"
-        plot_range <- c(20e6,30e6)
-        pop <- "JUHOAN"
-        #pop <- "LWK"
-        panel_letter <- "c"
-      }
+        chrom <- "04"
+        plot_range <- c(142e6,148e6)
+        pop <- "FULAI"
+        #pop <- "AMHARA"
+        panel_letter <- "b"
+        gene_highlight <- c("GYPE","GYPA","GYPB")
       
-      if(run == 4)
-      {
-        # chrom <- "06"
-        # plot_range <- c(22e6,42e6)
-        # pop <- "JOLA"
-        # panel_letter <- "d"
-        
-        chrom <- "10"
-        plot_range <- c(20e6,30e6)
-        pop <- "WASAMBAA"
-        panel_letter <- "d"
       }
-      
-        
+
       #######################################################
       ### PLOT LOGISTIC AND MVN
       library(dplyr) ## for binding dataframes with difference numbers of columns; bind_rows
-      in_dir <- '/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/outputcopyprobs/'
+      #in_dir <- '/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/outputcopyprobs/'
+      in_dir <- '/mnt/kwiat/well/human/george/copy_selection2/copy_selection/output/'
       pops <- read.table('/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/chromopainter/analysislists/MalariaGen23EthnicGroups1KGSouthAfricaNoAmericaFinalCP.idfile.txt')
       pops <- as.character(levels(pops[,2]))
      
       chrom2 <- as.numeric(chrom)
-      in_file <- paste0(in_dir,pop,'nolocalChrom',chrom2,'PP.likelihoods.gz')
-      liks <- read.table(in_file,header=T,as.is=T)
-      pcols <- grep(".P",colnames(liks))
+      in_file <- paste0(in_dir,pop,'nolocalChrom',chrom,'.ancestryselectionIII.gz')
+      in_file2 <- paste0(in_dir,pop,'nolocalChrom',chrom,'.ancestryselectionIIIa.gz')
+      liks <- read.csv(in_file,header=T,as.is=T)
+      mvn <- read.csv(in_file2,header=T,as.is=T)
+      pcols <- grep(".RC.P",colnames(liks))
       plot_region <- liks$pos>=plot_range[1]&liks$pos<=plot_range[2]
       liks <- liks[plot_region,]
       ymax <- max(liks[,pcols])    
@@ -161,12 +138,17 @@ pdf("figures/LocalAncestryDeviationsSuppFig.pdf",width=10,height=10)
            xaxs = "i", yaxs = "i")
       abline(v=gene_region, col = "grey10", lty = 1, xpd = T)
       
+      ## ADD MVN LINE
+      points(mvn$pos,mvn$MVNp, col = "black", type = "S", lwd = 2)
+      
       for(i in pcols)
       {
-        reg <- gsub("\\.","-",gsub("\\.P","",colnames(liks)[i]))
+        reg <- gsub("\\.","-",gsub("\\.RC.P","",colnames(liks)[i]))
         linecol <- pcolshex[regions == reg]
         points(liks$pos,liks[,i], col = linecol, type = "S", lwd = 2)
       }
+      
+      
       yat <- pretty(ylims)
       axis(2, at = yat, labels = yat, las = 2, xpd = T)
       xat <- pretty(liks$pos)
@@ -174,14 +156,14 @@ pdf("figures/LocalAncestryDeviationsSuppFig.pdf",width=10,height=10)
   
       #######################################################
       ### PLOT BETA COEFFS
-      pcols <- grep(".lambda",colnames(liks))
+      pcols <- grep(".RC.beta",colnames(liks))
       #ylims <- range(pretty(range(liks[,pcols])))
-      ylims <- c(-4,2)
+      ylims <- c(-4.5,2.5)
       
       par(mar=c(0,6,0,1))
       plot(0,0,
            xlim=range(plot_range), type = "n", ylim = ylims,
-           axes = F, ylab = expression(Delta~Ancestry), xlab = "",
+           axes = F, ylab = expression(beta~Anc.~deviation), xlab = "",
            xaxs = "i", yaxs = "i")
       abline(h=0, lty = 2)
       abline(v=gene_region, col = "grey10", lty = 1, xpd = T)
@@ -189,7 +171,7 @@ pdf("figures/LocalAncestryDeviationsSuppFig.pdf",width=10,height=10)
       
       for(i in pcols)
       {
-        reg <- gsub("\\.","-",gsub("\\.lambda","",colnames(liks)[i]))
+        reg <- gsub("\\.","-",gsub("\\.RC.beta","",colnames(liks)[i]))
         linecol <- pcolshex[regions == reg]
         points(liks$pos,liks[,i], col = linecol, type = "S", lwd = 2)
       }
@@ -319,10 +301,19 @@ pdf("figures/LocalAncestryDeviationsSuppFig.pdf",width=10,height=10)
       #######################################################
       ### PLOT GENES
       source("~/repos/glycophorins/external_software/plot_genes.R")
-      genes = load.genes( "/mnt/kwiat/data/1/galton/malariagen/human/reference/genome-mysql.cse.ucsc.edu/2015-08-18/UCSC_hg19_2015-08-18_refGene.tsv" )
+      genes = load.genes( "/mnt/kwiat/data/1/galton/malariagen/human/reference/genome-mysql.cse.ucsc.edu/2014-03-18/UCSC_hg19_2014-03-18_refGene.tsv" )
       genes <- genes[genes$cdsStartStat!="unk",]
       par(mar=c(4,6,1,1))
-      plot.genes( chromosome = chrom, region = range(pretty(gene_region)), genes, xaxt = "n" , plot.ylab = "Genes")
+      
+      if(run == 1)
+      {
+        plot.genes( chromosome = chrom, region = range(pretty(gene_region)), genes, xaxt = "n" , plot.ylab = "Genes", highlight.gene = gene_highlight, switch.gene.side = TRUE)
+      }
+      
+      if(run == 2)
+      {
+        plot.genes( chromosome = chrom, region = range(pretty(gene_region)), genes, xaxt = "n" , plot.ylab = "Genes", highlight.gene = gene_highlight)
+      }
       x_at <- pretty(gene_region)
       axis(1,at=x_at,labels=x_at/1e6, xpd = T)
       mtext(1,text = paste("position on chromosome",as.numeric(chrom)), line = 3)

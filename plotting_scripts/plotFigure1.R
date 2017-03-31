@@ -1,5 +1,5 @@
 ### SCRIPT TO CALL THE VARIOUS PLOTTING SCRIPTS TO PRODUCE A SINGLE PLOT ###
-setwd("~/repos/ancestry_selection/")
+setwd("~/repos/ANCSELECT/")
 
 ############################################################
 ## SOURCE SOME USEFUL FUNCTIONS FROM copyselection PACKAGE ##
@@ -7,7 +7,7 @@ setwd("~/repos/ancestry_selection/")
 ############################################################
 main_dir <- "~/repos/" ## where the code is kept
 source(paste0(main_dir,"popgen/packages_dev/functionWriter.R"))
-setwd(paste0(main_dir,"ancestry_selection/"))
+setwd(paste0(main_dir,"ANCSELECT/"))
 ###########################################################
 ## DEFINE DATAFILES
 #fsanalyname <- 'MalariaGen23EthnicGroups1KGSouthAfricaNoAmericaFinalForce.A'
@@ -34,6 +34,7 @@ pdf("figures/LocalAncestryOverviewFig1.pdf",width=10,height=5)
                     2,5),3,2,byrow=T),
            heights=c(1,2,2),widths=c(3,7))
 
+    panel_desc <- 3.45 ## position of the panel descriptions in the right margin
     ###########################################################
     ## 00 MAP AND LEGENDS
     transparent_cols <- FALSE ## use transparent colours for malariagen countries
@@ -146,8 +147,8 @@ pdf("figures/LocalAncestryOverviewFig1.pdf",width=10,height=5)
     # #xat[length(xat)] <- sum(chromposI)
     # axis(1,at=xatlab,labels=xatlab/1e6)
     # mtext(1,text=paste("position on chromosome",as.numeric(chrom), "(Mb)"),line=2,cex=1)
-    mtext(4, text = "10 painted \nhaplotypes",
-          las = 2, adj = 0.5, line = 3.1, cex = 0.75)
+    mtext(4, text = "10 randomly\nselected painted\nFula haplotypes",
+          las = 2, adj = 0.5, line = panel_desc, cex = 0.75)
 
     ####################################################################################
     ## NOW SHOW PAINTINGS ACROSS ALL FULAI
@@ -206,8 +207,8 @@ pdf("figures/LocalAncestryOverviewFig1.pdf",width=10,height=5)
     # axis(1,at=xat,labels=xatlab/1e6)
     
     mtext(3,line=0,text=" c",adj=0, cex = 2)
-    mtext(4, text = "all painted\nhaplotypes",
-          las = 2, adj = 0.5,line = 3.1, cex = 0.75)
+    mtext(4, text = "All painted\nFula haplotypes",
+          las = 2, adj = 0.5,line = panel_desc, cex = 0.75)
     
     
     ####################################################################################
@@ -226,7 +227,16 @@ pdf("figures/LocalAncestryOverviewFig1.pdf",width=10,height=5)
     axis(1,at=xat,labels=xatlab/1e6)
     mtext(1,text=paste("position on chromosome",as.numeric(chrom), "(Mb)"),line=2,cex=1)
     mtext(3,line=0,text=" d",adj=0, cex = 2)
-    mtext(4, text = "ancestry\nacross all\nhaplotypes",
-          las = 2, adj = 0.5, line = 3.1, cex = 0.75)
-    
+    mtext(4, text = "Ancestry\nproportions\nacross all\npainted \nFula haplotypes",
+          las = 2, adj = 0.5, line = panel_desc, cex = 0.75)
+ 
+    ## ADD RECT HIGHLIGHTING A DEVIATION
+    xleft <- (21.75/40)*sum(chromposI)
+    xright <- (23.25/40)*sum(chromposI)
+    rect(xleft,0,xright,1250, border = "black", lwd = 1)    
+    midpoint  <- mean(c(xleft,xright))
+    arrows(midpoint,1450,midpoint,1250, length = 0.05, lwd = 1, angle = 20, xpd = T)    
+    mtext(3,text = "Is Eurasian ancestry (dark yellow) significantly deviated from expectations?",
+          cex = 0.5)
+         
 dev.off()

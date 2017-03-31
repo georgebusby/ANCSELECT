@@ -6,25 +6,29 @@
 ##################
 ###################################################################
 ###################################################################
-use.h5 <- FALSE
-if(use.h5 == TRUE) library(h5) ## I've had problems installing with this program, so trying something different
-if(use.h5 == FALSE) library(rhdf5)
+library(rhdf5)
 library(data.table)
 
-temp <- c("",
-        "FULAI",
-        "22",
-        "/mnt/kwiat/well/human/george/copy_selection/hdf5files/MalariaGenSelectionPaintings.hdf5")
+# temp <- c("",
+#        "AFAR",
+#        "22",
+#        "/mnt/kwiat/data/1/galton/users/george/copy_selection/hdf5files/MalariaGenSelectionPaintings.hdf5")
 
 temp <- commandArgs()
 pop <- temp[2]
 mainchrom <- temp[3]
+#datafile <- H5Fopen(temp[4])
 
-if(use.h5 == TRUE) datafile <- h5file(temp[4], mode = 'r')
-if(use.h5 == FALSE) datafile <- H5Fopen(temp[4])
+paste0 <- function(...) {
+  paste(...,sep="")
+}
 
-main_dir <- "/kwiat/1/galton/users/george/copy_selection/"
-main_dir <- "/mnt/kwiat/data/1/galton/users/george/copy_selection/"
+
+# main_dir <- "/kwiat/1/galton/users/george/copy_selection/"
+# main_dir <- "/mnt/kwiat/data/1/galton/users/george/copy_selection/"
+main_dir <- "/well/malariagen/malariagen/human/george/copy_selection2/copy_selection/"
+# main_dir <- "/mnt/kwiat/well/human/george/copy_selection2/copy_selection/"
+
 outfile <- paste0(main_dir,"output/",pop,"nolocalChrom",mainchrom,".ancestryselectionIII.gz")
 
 # popkey_file <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/ancestry_selection/MalariaGenAdmixturePopulationOverviewNSAA.txt"
@@ -34,6 +38,9 @@ outfile <- paste0(main_dir,"output/",pop,"nolocalChrom",mainchrom,".ancestrysele
 popkey_file <- paste0(main_dir,"analysis_lists/MalariaGenAdmixturePopulationOverviewNSAA.txt")
 snp_dir <- paste0(main_dir,"snpfiles/")
 pop_file <- paste0(main_dir,"analysis_lists/populationOverviewCopyProbs.txt")
+hdf5_file <- paste0(main_dir,"hdf5files/MalariaGenSelectionPaintings.hdf5")
+datafile <- H5Fopen(hdf5_file)
+
 
 options(scipen=999,digits=20)
 n_samps <- 10
@@ -136,19 +143,13 @@ find_ridged_beta <- function(beta,sum_y,mu,sigma_sq)
 
 ###################################################################
 ###################################################################
-###################################################################
 ### PROGRAM ###
 ## ALL DATA IS IN BIG HDF5 FILE
 ## GET 10X SAMPLES OF A SINGLE PAINTED CHROMOSOME
-if(use.h5 == T) psamples <- readDataSet(datafile[paste0("/paintings/samples/individuals")])
-if(use.h5 == F) psamples <- t(h5read(datafile,paste0("/paintings/samples/individuals")))
-  
-
+psamples <- t(h5read(datafile,paste0("/paintings/samples/individuals")))
 colnames(psamples) <- c("ind","region","X")
 
 ####################################################################################
-## GET PAINTINGS ACROSS ALL POP OF INTEREST
-analysis <- "nonlocal"
 psamplesind <- (1:nrow(psamples))[psamples[,"region"] == pop]
 # 2 haps per sample!!
 psampleshap <- hap2sampleindex(psamplesind,2)
@@ -156,68 +157,69 @@ psampleshap <- sort(c(psampleshap,psampleshap+1))
 psamplesindsamp <- hap2sampleindex(psampleshap)
 tmp <- c()
 for(i in psamplesindsamp) tmp <- c(tmp,i:(i+9))
-
-## LOAD ALL PAINTINGS
-chroms <- 1:22
-paintings <- snps <- c()
-
-if(use.h5 == T)
-{
-  for(chrom in chroms)
-  {
-    print(paste0("loading chromosome: ",chrom))
-    if(chrom<10) chrom <- paste0("0",chrom)
-    tmpchrom <- data.table(datafile[paste0("paintings/chrom",chrom,"/",analysis)][,tmp])
-    paintings <- rbind(paintings,tmpchrom)
-    tmpmap <- data.frame(readDataSet(datafile[paste0("paintings/chrom",chrom,"/map")]),stringsAsFactors = F)
-    colnames(tmpmap) <- c("position","recrate")
-    tmpmap <- data.frame(apply(tmpmap,2,as.numeric))
-    tmpsnps <- data.frame(readDataSet(datafile[paste0("paintings/chrom",chrom,"/snps")]))
-    colnames(tmpsnps) <- c("chrom","rsid","pos","a0","a1")
-    tmpsnps <- cbind(tmpsnps,tmpmap$recrate)
-    snps <- rbind(snps,tmpsnps)  
-  }
-}
-
-if(use.h5 == F)
-{
-  for(chrom in chroms)
-  {
-    print(paste0("loading chromosome: ",chrom))
-    if(chrom<10) chrom <- paste0("0",chrom)
-    tmpchrom <- data.table(t(h5read(datafile,paste0("paintings/chrom",chrom,"/",analysis)))[,tmp])
-    
-    tmpchrom <- datafile&paste0("paintings/chrom",chrom,"/",analysis)
-    data.table(tmpchrom[tmp,])
-    
-    paintings <- rbind(paintings,tmpchrom)
-    tmpmap <- data.frame(readDataSet(datafile[paste0("paintings/chrom",chrom,"/map")]),stringsAsFactors = F)
-    colnames(tmpmap) <- c("position","recrate")
-    tmpmap <- data.frame(apply(tmpmap,2,as.numeric))
-    tmpsnps <- data.frame(readDataSet(datafile[paste0("paintings/chrom",chrom,"/snps")]))
-    colnames(tmpsnps) <- c("chrom","rsid","pos","a0","a1")
-    tmpsnps <- cbind(tmpsnps,tmpmap$recrate)
-    snps <- rbind(snps,tmpsnps)  
-  }
-}
-
-snps <- data.table(snps)
-colnames(snps)[ncol(snps)] <- "recrate"
-snps$pos <- as.numeric(as.character(snps$pos))
-snps$recrate <- as.numeric(as.character(snps$recrate))
-n_snps <- sum(snps$chrom==as.numeric(mainchrom))
-###################################################################
-## 01 GET POPULATION INFO PLUS INFO ON REGIONS, NUMBERS OF HAPS ETC.
-paintedchrom <- paintings[snps$chrom==as.numeric(mainchrom),]
+n_haps <- length(tmp)
 n_regs <- length(regions)
-n_haps <- ncol(paintedchrom)/n_samps
-## SWITCH DONORS TO REGIONS
 happops <- c()
 for(i in 1:nrow(psamples)) happops <- c(happops,rep(as.character(psamples[i,"region"]),2))
 happops <- gsub("SEMI.BANTU","SEMI-BANTU",happops)
 hapregs <- c()
 for(i in happops) hapregs <- c(hapregs,as.character(popkey$RegionM[popkey$Ethnic_Group==i]))
 hapregs <- factor(hapregs,levels=ancreg_list)
+analysis <- "nonlocal"
+
+## LOAD ALL PAINTINGS
+chroms <- 1:22
+snps <- c()
+for(chrom in chroms)
+{
+  print(paste0("loading chromosome: ",chrom))
+  if(chrom<10) chrom <- paste0("0",chrom)
+  tmpchrom <- data.table(t(h5read(datafile,paste0("paintings/chrom",chrom,"/",analysis),index = list(tmp,NULL))))
+  if(chrom == "01")
+  {
+    paintings <- tmpchrom
+  } else
+  {
+    paintings <- rbind(paintings,tmpchrom)
+  }
+  
+  # #########################################
+  # ## test if local copier copies local
+  # copiercopies <- t(h5read(datafile,paste0("/lengths/chrom",chrom,"/copiercopies")))
+  # copiercopies <- data.table(copiercopies)
+  # for(j in 1:ncol(copiercopies)) set(copiercopies,j=j,value=hapregs[copiercopies[[j]]]==hapregs[j])
+  # copymat <- as.matrix(copiercopies, byrow = T)
+  # indices <- unlist(tmpchrom)
+  # indices <- cbind(rep(1:nrow(tmpchrom),n_haps),indices)
+  # indices <- cbind(indices,copymat[cbind(as.numeric(indices[,1]),as.numeric(indices[,2]))])
+  # copymat <- matrix(indices[,3],nr=nrow(copymat),nc = ncol(tmpchrom), byrow = F)
+  # ## copymat tells us whether each hap should be masked at that SNP
+  # if(chrom == "01")
+  # {
+  #   maskings <- copymat
+  # } else
+  # {
+  #   maskings <- rbind(maskings,copymat)
+  # }
+  tmpmap <- data.frame(t(h5read(datafile,paste0("paintings/chrom",chrom,"/map"))),stringsAsFactors = F)
+  colnames(tmpmap) <- c("position","recrate")
+  tmpmap <- data.frame(apply(tmpmap,2,as.numeric))
+  tmpsnps <- data.frame(t(h5read(datafile,paste0("paintings/chrom",chrom,"/snps"))))
+  colnames(tmpsnps) <- c("chrom","rsid","pos","a0","a1")
+  tmpsnps <- cbind(tmpsnps,tmpmap$recrate)
+  snps <- rbind(snps,tmpsnps)  
+}
+
+###################################################################
+## 02 GET SNP INFO ETC.
+## GET PAINTINGS ACROSS ALL POP OF INTEREST
+snps <- data.table(snps)
+colnames(snps)[ncol(snps)] <- "recrate"
+snps$pos <- as.numeric(as.character(snps$pos))
+snps$recrate <- as.numeric(as.character(snps$recrate))
+n_snps <- sum(snps$chrom==as.numeric(mainchrom))
+paintedchrom <- paintings[snps$chrom==as.numeric(mainchrom),]
+n_haps <- ncol(paintedchrom)/n_samps
 paintedchromreg <- matrix(nc=ncol(paintedchrom),nr=nrow(paintedchrom))
 for(i in 1:ncol(paintedchrom)) paintedchromreg[,i] <- hapregs[paintedchrom[[i]]]
 paintedchrompop <- matrix(nc=ncol(paintedchrom),nr=nrow(paintedchrom))
@@ -232,14 +234,20 @@ print(paste0("estimating likelihoods for chromosome: ", mainchrom, " in ", pop))
 ind_copy_probs <- matrix(0,nrow=n_haps*n_samps,ncol=n_regs)
 colnames(ind_copy_probs) <- regions
 rows <- which(snps$chrom!=as.numeric(mainchrom))
-dt <- paintings[rows,]
+dt <- data.frame(paintings[rows,])
+#dt2 <- data.frame(maskings[rows,])
 for(j in 1:ncol(dt)) set(dt,j=j,value=hapregs[dt[[j]]])
 for(j in 1:ncol(dt))
 {
   print(paste0("generating genome-wide copying probs for haplotype/sample: ",j,"/",n_haps*n_samps));
   cptab <- table(dt[[j]])
+  #cptab <- table(unlist(dt[[j]])[unlist(dt2[[j]])==0])
   ind_copy_probs[j,names(cptab)] <- cptab
 }
+rm(dt)
+rm(paintings)
+#rm(dt2)
+#maskings <- maskings[snps$chrom==as.numeric(mainchrom),]
 ind_copy_probs <- ind_copy_probs/rowSums(ind_copy_probs)
 
 ## REMOVE REGION THAT IS ARE NOT COPIED FROM A REGION ID VECTOR
@@ -257,80 +265,93 @@ for(i in seq(1,nrow(ind_copy_probs),by=10))   v <- rbind(v,apply(ind_copy_probs[
 ####################################################################
 ## 05a ORIGINAL GB/CC APPROACH
 ## GET REGION OF WHO COPIER COPIES
-copiercopies <- data.table(readDataSet(datafile[paste0("/lengths/chrom",mainchrom,"/copiercopies")]))
-for(j in 1:ncol(copiercopies)) set(copiercopies,j=j,value=hapregs[copiercopies[[j]]])
-
-paintedchromreg <- data.table(paintedchromreg)
+## WE DON'T NEED THIS ANYMORE AS WE'VE STORED THIS INFO ABOVE
+# copiercopies <- data.table(t(h5read(datafile,paste0("/lengths/chrom",mainchrom,"/copiercopies"))))
+# for(j in 1:ncol(copiercopies)) set(copiercopies,j=j,value=hapregs[copiercopies[[j]]])
 
 
 ## SET EVERYTHING UP
-mle <- matrix(0,nrow=n_snps,ncol=6*n_regs2)
+mle <- matrix(0,nrow=n_snps,ncol=(n_regs2*8)+1)
 cnames <- c()
-for(i in region_ids2) cnames <- c(cnames,rep(i,6))
-colnames(mle) <- paste(cnames,rep(c("GB.lik","GB.beta","GB.P","RC.lik","RC.beta","RC.P"),n_regs2),sep=".")
-
+for(i in region_ids2) cnames <- c(cnames,rep(i,8))
+colnames(mle) <- c("pc.drop",paste(cnames,
+                                   rep(c("prop","num.dons","GB.lik","GB.beta","GB.P",
+                                         "RC.lik","RC.beta","RC.P"),n_regs2),sep="."))
 ## LOGIT OF MUS
 mus <- ind_copy_probs
 mus <- log(mus/( 1-mus))
 
+## STORE A DATAFRAME FOR THE MVN TEST
+pchrom <- paintedchromreg
+## TURN INTO DATATABLE FOR SPEED
+paintedchromreg <- data.table(paintedchromreg)
+
 for(i in 1:n_snps)
 {
   print(paste("generating likelihoods for snp:",i, "/", n_snps))
-  #pcdone <- signif((i/n_snps)*100,2)
-  #if(pcdone%%10 == 0) print(paste(pcdone," % through snps"))
+  data <- unlist(paintedchromreg[i,])
+  ## test if local copier copies local: NOW DONE ABOVE
+  #copied_haps <- paste0("V",paintedchrom[i])
+  #copied_hapsreg <- as.character(hapregs[unlist(paintedchrom[i])])
+  #painted <- copiercopies[i=i,j=copied_haps, with = F] == self_reg
+  #painted <- copiercopies[i=i,j=copied_haps, with = F] != copied_hapsreg
+  #painted <- maskings[i,] == 0
+  #data[painted] <- NA
+  
+  pchrom[i,] <- data
+  #perc.dropped <- sum(painted)/length(painted)
+  perc.dropped <- 0
+  mle[i,1] <- perc.dropped
+  new_props <- table(data)
+  prop_cols <- paste0(ancreg_list[as.numeric(names(new_props))],".prop")
+  mle[i,prop_cols] <- table(data)
   for(reg_index in 1:length(regions))
   {
     reg_id <- regions[reg_index]
     if(!reg_id %in% self_reg)
     {
-      data <- unlist(paintedchromreg[i])
-      ## test if local copier copies local
-      painted <- copiercopies[i=i,j=paste0("V",paintedchrom[i]), with = F]== self_reg
-      data[painted] <- NA
       ###################################################
       ## GEORGE'S HACKED LRT TEST 
       lambda <- 0
       #opt1 <- optim(lambda,par.loglik,data=data,nsamps=n_samps,colindex=reg_index,v=v,method="Nelder-Mead")
-      opt2 <- optimise(par.loglik,interval = c(-5,5),data=data,nsamps=n_samps,colindex=reg_index,v=v)
+      opt2 <- optimise(par.loglik,interval = c(-10,10),data=data,nsamps=n_samps,colindex=reg_index,v=v)
       ## COMPUTE NULL
       null_lik <- -(loglik(v,data,nsamps=n_samps) + dnorm(lambda,0,10,log=TRUE))
       test_lik <- opt2$objective
-      test_lam <- opt2$minimum
+      beta <- opt2$minimum
       lrt <- (2*null_lik) - (2*test_lik)
       p <- -log10(pchisq(q=lrt,df=1,lower.tail=F))
-      mle[i,grep(reg_id,colnames(mle))[1:3]]  <- c(test_lik,test_lam,p)
+      gb_cols <- paste0(reg_id,c(".GB.lik",".GB.beta",".GB.P"))
+      mle[i,gb_cols]  <- c(lrt,beta,p)
       ###################################################
       ## RYAN'S PRINCIPALLED VERSION
-      #print(paste0("generating likelihoods for: ",reg_id))
-      mu_i <-  mus[,reg_index]
-      #ps <- lrs <- betas <- rep(0,n_snps)
-      ## make a mu table for each sampled painting??
       sum_yi <- sum(data == reg_index,na.rm=T)
-      mu_i <-  mus[,reg_index][!painted]
+      #mu_i <-  mus[,reg_index][!painted]
+      mu_i <-  mus[,reg_index]
+      avg_num_samps <- n_samps/(nrow(ind_copy_probs)/sum(!is.na(data)))
       if(sum_yi > 0)
       {
-        beta_hat<-uniroot(find_beta,c(-10,10),sum_y=sum_yi,mu=mu_i)$root
-        LRT<-2*(beta_hat*sum_yi+sum(log((1+exp(mu_i))/(1+exp(mu_i+beta_hat)))))
-        mle[i,grep(reg_id,colnames(mle))[4]] <- LRT
-        mle[i,grep(reg_id,colnames(mle))[5]] <- beta_hat
-        mle[i,grep(reg_id,colnames(mle))[6]] <- -pchisq(LRT,df = 1,lower.tail = F,log.p = T)/log(10)
+        BETA <- uniroot(find_beta,c(-10,10),sum_y=sum_yi,mu=mu_i)$root
+        sum_logmu <- sum(log((1+exp(mu_i))/(1+exp(mu_i+BETA))))
+        beta_y <- BETA*sum_yi
+        LRT <- 2*(beta_y + sum_logmu)/avg_num_samps ## this might be controversial
+        P <- -log10(pchisq(q=LRT,df=1,lower.tail=F))
       } else
       {
-        
-        mle[i,grep(reg_id,colnames(mle))[4]] <- NA
-        mle[i,grep(reg_id,colnames(mle))[5]] <- NA
-        mle[i,grep(reg_id,colnames(mle))[6]] <- NA
+        BETA <- LRT <- P <- NA
       }
+      rc_cols <- paste0(reg_id,c(".RC.lik",".RC.beta",".RC.P"))
+      mle[i,rc_cols] <- c(LRT,BETA,P)
+      ## I ALSO WANT TO WORK OUT THE NUMBER OF DIFFERENT INDS BEING COPIED IN EACH REGION
+      num_unique_dons <- unique(unlist(paintedchrom[i,])[which(paintedchrom[i,data==reg_index])])
+      col2fill <- paste0(reg_id,".num.dons")
+      mle[i,col2fill] <- length(num_unique_dons)
     }
   }
 }
 
-## I WANT TO TRY TO SPEED THIS UP A BIT
-## 
-
 mle <- cbind(snps[snps$chrom==as.numeric(mainchrom),],mle)
 all_out <- data.table(mle)
-#old_out <- out_mat
 
 ## GENERATE SOME EMPIRICAL P-VALUES
 ## eg
@@ -338,52 +359,31 @@ all_out <- data.table(mle)
 ## THIS WILL GIVE YOU A LIST OF TOP X REGIONS ETC
 ####################################################################
 ## 06 CHRIS'S MVN METHOD
-#Set things up
+## Set things up
 # n_ind <- n_haps / n_samps;
-#haps <- matrix(donor_hap_vec[lines4[1:nrow(lines4),]],byrow = F,nr=n_snps)
-#Get individuals averages
-## AVERAGE ACROSS THE 10 SAMPLES?
 # avg <- ind_copy_probs
-# avg <- matrix(0,nrow=n_haps*n_samps,ncol=n_regs)
-# colnames(avg) <- 1:n_regs
-# ind_vec <- seq(1,ncol(lines4),n_samps)
-# for(i in 1:n_haps)
-# {
-#   print(paste("estimating genome-wide avg for hap:", i))
-#   cp <- matrix(0,nrow=n_samps,ncol=n_regs)
-#   colnames(cp) <- 1:n_regs
-#   for(j in 1:n_samps)
-#   {
-#     tmp_cp <- table(donor_hap_vec[lines3[rows,(ind_vec[i]:(ind_vec[i]+9))[j]]])
-#     tmp_cp <- tmp_cp/sum(tmp_cp)
-#     cp[j,names(tmp_cp)] <- tmp_cp
-#   }
-#   avg[((i-1)*10+1):((i-1)*10+10),] <- cp
-# }
-# 
-# avg <- avg/rowSums(avg)
-# 
-# #Residual
-# res <- paintedchromreg;
+# res <- pchrom
+# ## CALCULATE RESIDUALS
+# res[is.na(res)] <- 0
 # for(i in 1:ncol(res))
 # {
-#   for(j in 1:length(region_ids))
+#   for(j in 1:length(regions))
 #   {
-#     res[paintedchromreg[,i] == j,i] <- (1 - avg[i,j])
+#     res[res[,i] == j,i] <- (1 - avg[i,j])
 #   }
 #   print(i);
 # }
 # 
-# #Get the total residual deviation
+# ## GET THE TOTAL RESIDUAL DEVIATION 
 # first <- seq(1,n_haps*10,by=n_samps);
-# deviant <- array(0,c(n_samps,n_snps,length(region_ids)));
+# deviant <- array(0,c(n_samps,n_snps,length(regions)));
 # for(j in 1:n_samps)
 # {
 #   index <- first + (j-1);
-#   for(i in 1:length(region_ids))
+#   for(i in 1:length(regions))
 #   {
 #     tmp <- res[,index];
-#     tmp[res[,index] != i] = 0;
+#     tmp[pchrom[,index] != i] = 0;
 #     deviant[j,,i] = rowSums(tmp);
 #   }
 #   print(j);
@@ -392,7 +392,7 @@ all_out <- data.table(mle)
 # random <- sample(1:n_snps,500);
 # tmp <- deviant[,,which(colSums(avg) != 0)];
 # x <- array(0,dim(tmp)[-1])
-# for(i in 1:n_samps) x <- x + tmp[i,,]
+# for(i in 1:n_samps) x <- x + tmp[i,,] 
 # x <- x / n_samps;
 # mu <- colSums(x[random,]) / nrow(x[random,]);
 # sigma <- cov(x[random,]);
@@ -404,23 +404,17 @@ all_out <- data.table(mle)
 # output <- array(NA,c(n_snps,2));
 # for(i in 1:n_snps)
 #   output[i,1] <- t(x[i,] - mu) %*% solve(sigma) %*% (x[i,] - mu);
-# output[,2] <- pchisq(output[,1],ncol(sigma),lower=FALSE)
+# output[,2] <- -log10(pchisq(output[,1],ncol(sigma),lower=FALSE))
 # 
 # marg.pval = array(NA,dim(x));
 # for(i in 1:ncol(marg.pval))
-#   marg.pval[,i] = pchisq((x[,i]-mu[i])^2/diag(sigma)[i],1,lower=FALSE);
+#   marg.pval[,i] = -log10(pchisq((x[,i]-mu[i])^2/diag(sigma)[i],1,lower=FALSE));
 # 
-# colnames(output) = c("MVNchisq","MVNp");
-# colnames(x) <- region_ids[!region_ids%in%self_reg]
-# colnames(marg.pval) <- paste(region_ids[!region_ids%in%self_reg],".MVNp",sep="")
-# res <- data.frame(snps[1:n_snps,],output,x,marg.pval);
+# colnames(output) <- c("MVNchisq","MVNp");
+# colnames(x) <- paste(regions[!regions%in%self_reg],".MVNprops",sep = "")
+# colnames(marg.pval) <- paste(regions[!regions%in%self_reg],".MVNp",sep="")
+# output <- data.frame(output,x,marg.pval);
 # 
-# all_out <- cbind(mle_out,res[,6:ncol(res)])
-
+# all_out <- cbind(all_out,output)
 options(digits = 5);
-
 write.table(all_out, file = outfile, row.names = F, quote = F, sep = ",")
-
-# gz1 <- gzfile(outfile,'w')
-# dput(all_out,gz1)
-# close(gz1)

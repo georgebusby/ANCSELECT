@@ -1,7 +1,7 @@
 ###
 ### SCRIPT TO PLOT LAMBDAS and PVALS EQUIVALENT TO MVN ANCESTRY PLOTS ###
 ###
-res_dir <- "/mnt/kwiat/well/human/george/copy_selection/"
+res_dir <- "/mnt/kwiat/well/human/george/copy_selection2/copy_selection/output/"
 #res_dir <- "/well/malariagen/malariagen/human/george/copy_selection/"
 source("~/R/Copy/Rprojects/AfricaPOPGEN/functions/plottingFunctions.R")
 #source("plottingFunctions.R")
@@ -25,23 +25,25 @@ regions <- as.character(unique(popkey$RegionM))
 minp <- 20
 pop <- "FULAI"
 
-in_root <- "/mnt/kwiat/data/2/bayes/users/george/popgen/analysis3/ancestry_selection/FULAInolocalChrom"
-in_suff <- "PP.ancestryselection.txt.gz"
+in_root <- paste0(res_dir,pop,"nolocalChrom")
+in_suff <- ".ancestryselectionVII.gz"
 pl <-c()
 for(chrom in 1:22)
 {
-    in_file <- paste0(in_root,chrom,in_suff)
-    if(chrom == 1)
-    {
-        pl <- read.csv(in_file,header=T, as.is=T)
-    } else
-    {
-        pl <- rbind(pl,read.csv(in_file,header=T, as.is=T))
-    }
+  if(chrom < 10) chrom <- paste0("0",chrom)
+  in_file <- paste0(in_root,chrom,in_suff)
+  if(chrom == 1)
+  {
+      pl <- read.csv(in_file,header=T, as.is=T)
+  } else
+  {
+      pl <- rbind(pl,read.csv(in_file,header=T, as.is=T))
+  }
 }
 
 
 ########################################################################
+source("~/R/Copy/Rprojects/AfricaPOPGEN/functions/hitplots.R")
 genes <- load.genes()
 ############################################################
 ## TO DO:
@@ -53,41 +55,23 @@ genes <- load.genes()
 
 
 ## PVALS
-plotregs <- gsub(".likelihood","",colnames(pl)[grep("likelihood",colnames(pl))])
-plotregs <- plotregs[2:length(plotregs)]
+plotregs <- gsub(".GB.beta","",colnames(pl)[grep(".GB.beta",colnames(pl))])
 n_plotregs <- length(plotregs)
 pval <- c()
 lams <- c()
 ## get lambdas
-ls <- pl[,grep("lambda",colnames(pl))]
-colnames(ls) <- paste(pop,gsub(".lambda","",colnames(ls)),sep=".")
+ls <- pl[,grep(".GB.beta",colnames(pl))]
+ps <- pl[,grep(".GB.P",colnames(pl))]
+colnames(ls) <- colnames(ps) <- paste(pop,gsub(".GB.beta","",colnames(ls)),sep=".")
 if(is.null(lams))
 {
-    lams <- ls 
+    lams <- ls
+    pval <- ps
 } else 
 {
     lams <- cbind(lams,ls)
+    pval <- cbind(pval,ps)
 }
-
-
-for(i in plotregs)
-{
-    ii <- paste0(i,".likelihood")
-    lrt <- (-2*(pl$snp_liks)) + (2*(as.numeric(pl[,ii])))
-    chi <- -log10(pchisq(q=lrt,df=1,lower.tail=F))
-    i1 <- paste0(i,".lambda")
-    #chi[pl[,i1]<0] <- NA
-    if(is.null(pval))
-    {
-        pval <- matrix(chi)
-    } else
-    {
-        pval <- cbind(pval,chi)    
-        
-    }
-    colnames(pval)[ncol(pval)] <- paste(pop,i,sep=".")
-}
-
 ## some plotting parameters ##
 regname <- "LCT"
 grepgene <- c(regname,"MCM6")
@@ -200,6 +184,7 @@ axis(1,las=2,at=axis_seq,labels=axis_seq/1e6,las=1,cex.axis=3,lwd=0,line=1)
 mtext(1,text=paste("position on chromosome",chrom,"(Mb)"),cex=2,line=4)
 
 dev.off()
+
 
 
 

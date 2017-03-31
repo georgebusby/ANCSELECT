@@ -29,11 +29,12 @@ popkey$Ethnic_Group <- toupper(popkey$Ethnic_Group)
 
 ##########################################################
 ##########################################################
-pdf("~/repos/ANCSELECT/figures/MalariaGenMAPofPops.pdf",height=9,width=9)
-layout(matrix(c(1,1,1,1,8,8,
-                1,1,1,1,8,8,
-                2,3,4,5,6,7),3,6,byrow=T),
-       heights=c(3,3,3), widths = c(rep(1.5,4)))
+pdf("~/repos/ANCSELECT/figures/MalariaGenMAPofPops.pdf",height=9,width=8)
+layout(matrix(c(1,1,1,1,9,
+                1,1,1,1,9,
+                2,3,4,6,7,
+                2,3,5,6,8),4,5,byrow=T),
+       heights=c(3,3,1.5,1.5), widths = c(rep(1.5,4),2))
 par(mar=c(0.5,0.5,0.5,0.5))
 plot_legends<- FALSE
 plot_letter <- FALSE
@@ -66,13 +67,14 @@ legend("bottomleft", legend = legend_text,
 ## PLOT LEGENDS
 afr_cnts <- list(c("Gambia","Mali"),
                  c("BurkinaFaso","Ghana","Nigeria","Cameroon"),
-                 c("Sudan","Ethiopia","Somalia"),
+                 c("Ethiopia","Somalia"),
+                 c("Sudan"),
                  c("Tanzania","Kenya"),
                  c("Malawi", "SouthAfrica"),
                  c("Angola","Namibia","Botswana"))
 names(afr_cnts) <- c("WESTERN\nNIGER-CONGO","CENTRAL WEST\nNIGER-CONGO",
-                     "AFROASIATIC\nNILO-SAHARAN","EAST\nNIGER-CONGO",
-                     "SOUTH\nNIGER-CONGO","KHOESAN")
+                     "EAST\nAFROASIATIC","EAST\nNILO-SAHARAN","EAST\nNIGER-CONGO",
+                     "SOUTH\nNIGER-CONGO","SOUTH\nKHOESAN")
 
 for(i in 1:length(afr_cnts))
 {
@@ -133,7 +135,7 @@ for(i in 1:length(afr_cnts))
 par(mar=c(0,0,4,0))
 plot(0,0,type="n",axes=F,xlab="",ylab="")
 leginfo <-read.table(leginfo_file,header=T,comment.char="")
-legnumbers <- read.table(pop_nums_file,header=F)
+legnumbers <- read.table(popnums_file,header=F)
 legnumbers[,1] <- tidyNames(legnumbers[,1])
 pop_nums <- c()
 pop_orig <- c()
@@ -179,13 +181,13 @@ legend_text <- c(gsub("\\_","\n",paste0(legend_text," [",as.character(leginfo$po
 legend("topleft",legend=c("EURASIA (not shown)",
                           legend_text,
                           "KEY TO POPULATION ORIGINS",
-                          "1K = ONE THOUSAND GENOME PROJECT",
+                          "1K = ONE THOUSAND GENOME\n                 PROJECT",
                           "MG = MALARIAGEN POPULATIONS",
-                          "PA = PAGANI ET AL 2012 AJHG ",
-                          "PE = PETERSON ET AL 2014 PLOS GENETICS",
-                          "SC = SCHLEBUSCH ET AL 2014 SCIENCE",
-                          "PS = POPULATIONS FROM PE AND SC"),    
-       bty="n",
-       title.col="black",title.adj=0)
+                          "PA = PAGANI ET AL 2012\n                 AJHG ",
+                          "PE = PETERSON ET AL 2014\n                 PLOS GENETICS",
+                          "SC = SCHLEBUSCH ET AL 2014\n                 SCIENCE",
+                          "PS = POPULATIONS FROM\n                 PE AND SC"),    
+       bty="n",inset = c(-0.1,0),
+       title.col="black",title.adj=0,y.intersp = 1.25)
   
 dev.off()
